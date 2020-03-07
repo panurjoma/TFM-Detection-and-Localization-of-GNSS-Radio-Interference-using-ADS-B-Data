@@ -1,0 +1,119 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Mar  5 19:58:01 2020
+
+@author: Pablo
+"""
+
+"""Description:"""
+
+
+""" Automatic generation of data to simulate the GPS"""
+
+""" Import modules """
+
+from threading import Thread
+import time
+from io import open
+import pickle
+from os import remove
+import math
+from scipy import constants as Const
+
+t0 = time.time()
+
+""" Plane class definition """
+
+
+class Plane:
+    # atributes definition 
+    plane_ini_pos_car = [0,0,0]
+    plane_ini_pos_esph =[]
+    velocity = []
+    course = []
+    receiver_pos_car = [0,0,0]
+    receiver_pos_esph = []
+    jam_pos_esph =[]
+    jam_rad = []
+    plane_fin_pos_car = [0,0,0]
+    plane_fin_pos_esph = [0,0,0]
+    signal_delta_t = []
+    # Class constructor
+    def __init__(self, ID):
+        self.ID = ID
+        print("The plane with ID:{}  has been created".format(self.ID))
+        
+    def __str__(self):
+        return 'Avion {} '.format(self.ID)
+    
+    def finalpoint_calc(self): #Scientific calculations
+            D = math.sqrt((self.plane_ini_pos_car[0]-self.receiver_pos_car[0])**2+(self.plane_ini_pos_car[1]-self.receiver_pos_car[1])**2+(self.plane_ini_pos_car[2]-self.receiver_pos_car[2])**2)
+            self.signal_delta_t = D/Const.c
+            D_rec= self.velocity*self.signal_delta_t
+            print(self.signal_delta_t,D_rec)
+            R_esf = self.plane_ini_pos_esph[0]
+            delta_theta = -(D_rec*math.cos(self.course*math.pi/180))/R_esf
+            delta_phi = (D_rec*math.sin(self.course*math.pi/180))/(R_esf*math.sin(self.plane_ini_pos_esph[1]))
+            self.plane_fin_pos_esph[0] = self.plane_ini_pos_esph[0]
+            self.plane_fin_pos_esph[1] = self.plane_ini_pos_esph[1] + delta_theta
+            self.plane_fin_pos_esph[2] = self.plane_ini_pos_esph[2] + delta_phi
+            self.plane_fin_pos_car [0] = self.plane_fin_pos_esph[0]*math.sin(self.plane_fin_pos_esph[1])*math.cos(self.plane_fin_pos_esph[2])
+            self.plane_fin_pos_car [1] = self.plane_fin_pos_esph[0]*math.sin(self.plane_fin_pos_esph[1])*math.sin(self.plane_fin_pos_esph[2])
+            self.plane_fin_pos_car [2] = self.plane_fin_pos_esph[0]*math.cos(self.plane_fin_pos_esph[1])
+            #print("The final latitude of the plane [between 0 y 180] is {} degrees".format(p.plane_fin_pos_esph[1]*180/math.pi))
+            #print("The final longitude of the plane is {} degrees".format(p.plane_fin_pos_esph[2]*180/math.pi))
+            Result.write("Plane ID: {} ; Final longitude [deg]: {} ; Final latitude [deg]: {} ; Final altitude [m]: {} \n".format(self.ID,self.plane_fin_pos_esph[2]*180/math.pi,-(self.plane_fin_pos_esph[1]*180/math.pi-90),self.plane_fin_pos_esph[0]-R_earth))
+
+
+""" Data reading """
+try:
+    remove("catalog.pckl")
+except:
+    pass
+finally:
+    pass
+
+try:
+    remove("Results.txt")
+    Result = open('Results.txt','w')
+except:
+    Result = open('Results.txt','w')
+finally:
+    pass
+
+    
+filedata = open('prueba1_datos.txt','r')
+text = filedata.readlines()
+l = len(text)
+for element in text: # Currently this is a loop but will be a threading
+    iterable_list = element.split(' ')
+    P = Plane(iterable_list[0])
+    data = iterable_list 
+    #time.sleep()
+    #Definimos atributos del avion
+    R_earth = 6371000
+    P.plane_ini_pos_esph = [float(data[3])+R_earth, math.pi/2-float(data[2])*math.pi/180, float(data[1])*math.pi/180] 
+    P.plane_ini_pos_car [0] = P.plane_ini_pos_esph[0]*math.sin(P.plane_ini_pos_esph[1])*math.cos(P.plane_ini_pos_esph[2])
+    P.plane_ini_pos_car [1] = P.plane_ini_pos_esph[0]*math.sin(P.plane_ini_pos_esph[1])*math.sin(P.plane_ini_pos_esph[2])
+    P.plane_ini_pos_car [2] = P.plane_ini_pos_esph[0]*math.cos(P.plane_ini_pos_esph[1])
+    P.velocity = float(data[4])
+    P.course = float(data[5])
+    P.receiver_pos_esph = [float(data[8])+R_earth, math.pi/2-float(data[7])*math.pi/180, float(data[6])*math.pi/180]
+    P.receiver_pos_car [0] = P.receiver_pos_esph[0]*math.sin(P.receiver_pos_esph[1])*math.cos(P.receiver_pos_esph[2])
+    P.receiver_pos_car [1] = P.receiver_pos_esph[0]*math.sin(P.receiver_pos_esph[1])*math.sin(P.receiver_pos_esph[2])
+    P.receiver_pos_car [2] = P.receiver_pos_esph[0]*math.cos(P.receiver_pos_esph[1])
+    P.jam_pos_esph = [float(data[11])+R_earth, math.pi/2-float(data[10])*math.pi/180, float(data[9])*math.pi/180]
+    P.jam_rad = float(data[12])
+    #P.plane_ini_pos_esph [0] = math.sqrt(P.plane_ini_pos_car[0]**2+P.plane_ini_pos_car[1]**2+P.plane_ini_pos_car[2]**2)
+    #P.plane_ini_pos_esph [1] = math.atan(math.sqrt(P.plane_ini_pos_car[0]**2+P.plane_ini_pos_car[1]**2)/P.plane_ini_pos_car[2])
+    #P.plane_ini_pos_esph [2] = math.atan(p.plane_ini_pos[1]/p.plane_ini_pos[0])]    
+    #print("The inicial longitude of the plane {} is {} degrees".format(P.ID,float(data[1])))
+    #print("The inicial latittude of the plane {} is {} degrees".format(P.ID,float(data[2])))
+    #print("The initial altittude of the plane {} is {} m".format(P.ID,float(data[3])))
+    long = len(iterable_list)
+    P.finalpoint_calc()
+    del(P)
+
+print (time.time() - t0, "seconds wall time")
+
+ 
